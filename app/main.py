@@ -34,8 +34,6 @@ REQUEST_LATENCY = Histogram(
 # -------------------------
 # Models
 # -------------------------
-
-
 class Item(BaseModel):
     name: str
     description: str = None
@@ -46,8 +44,6 @@ class Item(BaseModel):
 # -------------------------
 # Helper Functions
 # -------------------------
-
-
 def calculate_price_with_tax(price: float, tax: float) -> float:
     return round(price + price * tax, 2)
 
@@ -55,8 +51,6 @@ def calculate_price_with_tax(price: float, tax: float) -> float:
 # -------------------------
 # API Endpoints
 # -------------------------
-
-
 @app.get("/")
 def read_root():
     logging.info("Root endpoint called")
