@@ -4,7 +4,6 @@ from pydantic import BaseModel
 import time
 import logging
 
-
 # -------------------------
 # Setup App and Logging
 # -------------------------
@@ -13,7 +12,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
 )
 
-
 # -------------------------
 # Metrics
 # -------------------------
@@ -21,7 +19,6 @@ REQUEST_COUNT = Counter("request_count", "Total API requests")
 REQUEST_LATENCY = Histogram(
     "request_latency_seconds", "Request latency in seconds"
 )
-
 
 # -------------------------
 # Models
@@ -61,7 +58,6 @@ def read_item(item_id: int):
     if item_id < 0:
         logging.error(f"Invalid item_id: {item_id}")
         raise HTTPException(status_code=400, detail="Invalid item ID")
-    # simulate fetching from DB
     return {
         "item_id": item_id,
         "name": f"Item {item_id}",
@@ -72,7 +68,9 @@ def read_item(item_id: int):
 @app.post("/items/")
 def create_item(item: Item):
     total_price = calculate_price_with_tax(item.price, item.tax)
-    logging.info(f"Item created: {item.name} with total_price={total_price}")
+    logging.info(
+        f"Item created: {item.name} with total_price={total_price}"
+    )
     return {"name": item.name, "total_price": total_price}
 
 
@@ -102,7 +100,6 @@ def metrics():
 @app.get("/trace-example/{user_id}")
 def trace_example(user_id: int):
     logging.info(f"Tracing request for user: {user_id}")
-    # simulate some business logic
     result = {"user_id": user_id, "message": f"Hello user {user_id}!"}
     return result
 
