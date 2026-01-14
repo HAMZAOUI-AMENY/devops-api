@@ -150,3 +150,4 @@ async def add_metrics(request: Request, call_next):
     REQUEST_COUNT.inc()
     REQUEST_LATENCY.observe(duration)
     return response
+
