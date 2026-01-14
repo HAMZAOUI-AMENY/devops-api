@@ -27,9 +27,9 @@ jobs:
           pip install pytest flake8
 
       - name: Run tests
-        run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          pytest tests/
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: pytest tests/
 
       - name: Lint code
         run: flake8 app/
