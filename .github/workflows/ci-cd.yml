@@ -27,7 +27,9 @@ jobs:
           pip install pytest flake8
 
       - name: Run tests
-        run: pytest tests/
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          pytest tests/
 
       - name: Lint code
         run: flake8 app/
