@@ -4,13 +4,16 @@ from pydantic import BaseModel
 import time
 import logging
 
+
 # -------------------------
 # Setup App and Logging
 # -------------------------
 app = FastAPI(title="DevOps Python API", version="1.0")
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
 )
+
 
 # -------------------------
 # Metrics
@@ -69,7 +72,9 @@ def read_item(item_id: int):
 @app.post("/items/")
 def create_item(item: Item):
     total_price = calculate_price_with_tax(item.price, item.tax)
-    logging.info(f"Item created: {item.name} with total_price={total_price}")
+    logging.info(
+        f"Item created: {item.name} with total_price={total_price}"
+    )
     return {"name": item.name, "total_price": total_price}
 
 
