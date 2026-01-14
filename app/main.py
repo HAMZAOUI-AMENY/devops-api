@@ -10,7 +10,8 @@ import logging
 # -------------------------
 app = FastAPI(title="DevOps Python API", version="1.0")
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
 )
 
 
@@ -18,7 +19,9 @@ logging.basicConfig(
 # Metrics
 # -------------------------
 REQUEST_COUNT = Counter("request_count", "Total API requests")
-REQUEST_LATENCY = Histogram("request_latency_seconds", "Request latency in seconds")
+REQUEST_LATENCY = Histogram(
+    "request_latency_seconds", "Request latency in seconds"
+)
 
 
 # -------------------------
@@ -60,7 +63,11 @@ def read_item(item_id: int):
         logging.error(f"Invalid item_id: {item_id}")
         raise HTTPException(status_code=400, detail="Invalid item ID")
     # simulate fetching from DB
-    return {"item_id": item_id, "name": f"Item {item_id}", "price": item_id * 10}
+    return {
+        "item_id": item_id,
+        "name": f"Item {item_id}",
+        "price": item_id * 10
+    }
 
 
 @app.post("/items/")
@@ -127,3 +134,4 @@ async def add_metrics(request: Request, call_next):
     REQUEST_COUNT.inc()
     REQUEST_LATENCY.observe(duration)
     return response
+
