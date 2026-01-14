@@ -20,6 +20,7 @@ REQUEST_LATENCY = Histogram(
     "request_latency_seconds", "Request latency in seconds"
 )
 
+
 # -------------------------
 # Models
 # -------------------------
@@ -68,9 +69,7 @@ def read_item(item_id: int):
 @app.post("/items/")
 def create_item(item: Item):
     total_price = calculate_price_with_tax(item.price, item.tax)
-    logging.info(
-        f"Item created: {item.name} with total_price={total_price}"
-    )
+    logging.info(f"Item created: {item.name} with total_price={total_price}")
     return {"name": item.name, "total_price": total_price}
 
 
