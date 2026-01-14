@@ -107,4 +107,10 @@ async def add_metrics(request: Request, call_next):
     duration = time.time() - start
     REQUEST_COUNT.inc()
     REQUEST_LATENCY.observe(duration)
+<<<<<<< HEAD
     return response
+=======
+    return response
+
+
+>>>>>>> e9ff535 (Fix flake8 formatting errors)
