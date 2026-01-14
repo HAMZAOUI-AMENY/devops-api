@@ -16,15 +16,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 REQUEST_COUNT = Counter('request_count', 'Total API requests')
 REQUEST_LATENCY = Histogram('request_latency_seconds', 'Request latency in seconds')
 
-@app.middleware("http")
-async def add_metrics(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    duration = time.time() - start
-    REQUEST_COUNT.inc()
-    REQUEST_LATENCY.observe(duration)
-    return response
-
 # -------------------------
 # Models
 # -------------------------
@@ -108,3 +99,12 @@ def multiply_numbers(a: float, b: float):
     result = a * b
     logging.info(f"Multiplying {a} * {b} = {result}")
     return {"result": result}
+
+@app.middleware("http")
+async def add_metrics(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    REQUEST_COUNT.inc()
+    REQUEST_LATENCY.observe(duration)
+    return response
