@@ -27,6 +27,8 @@ jobs:
           pip install pytest flake8
 
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest tests/
 
       - name: Lint code
