@@ -20,13 +20,16 @@ logging.basicConfig(
 # -------------------------
 REQUEST_COUNT = Counter("request_count", "Total API requests")
 REQUEST_LATENCY = Histogram(
-    "request_latency_seconds", "Request latency in seconds"
+    "request_latency_seconds",
+    "Request latency in seconds"
 )
 
 
 # -------------------------
 # Models
 # -------------------------
+
+
 class Item(BaseModel):
     name: str
     description: str = None
@@ -37,6 +40,8 @@ class Item(BaseModel):
 # -------------------------
 # Helper Functions
 # -------------------------
+
+
 def calculate_price_with_tax(price: float, tax: float) -> float:
     return round(price + price * tax, 2)
 
@@ -44,6 +49,8 @@ def calculate_price_with_tax(price: float, tax: float) -> float:
 # -------------------------
 # API Endpoints
 # -------------------------
+
+
 @app.get("/")
 def read_root():
     logging.info("Root endpoint called")
@@ -62,7 +69,8 @@ def read_item(item_id: int):
     if item_id < 0:
         logging.error(f"Invalid item_id: {item_id}")
         raise HTTPException(
-            status_code=400, detail="Invalid item ID"
+            status_code=400,
+            detail="Invalid item ID"
         )
     return {
         "item_id": item_id,
@@ -75,7 +83,8 @@ def read_item(item_id: int):
 def create_item(item: Item):
     total_price = calculate_price_with_tax(item.price, item.tax)
     logging.info(
-        f"Item created: {item.name} with total_price={total_price}"
+        f"Item created: {item.name} "
+        f"with total_price={total_price}"
     )
     return {"name": item.name, "total_price": total_price}
 
@@ -110,7 +119,10 @@ def metrics():
 @app.get("/trace-example/{user_id}")
 def trace_example(user_id: int):
     logging.info(f"Tracing request for user: {user_id}")
-    result = {"user_id": user_id, "message": f"Hello user {user_id}!"}
+    result = {
+        "user_id": user_id,
+        "message": f"Hello user {user_id}!"
+    }
     return result
 
 
