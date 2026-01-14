@@ -8,7 +8,10 @@ import logging
 # -------------------------
 # Setup App and Logging
 # -------------------------
-app = FastAPI(title="DevOps Python API", version="1.0")
+app = FastAPI(
+    title="DevOps Python API", 
+    version="1.0"
+    )
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -18,7 +21,10 @@ logging.basicConfig(
 # -------------------------
 # Metrics
 # -------------------------
-REQUEST_COUNT = Counter("request_count", "Total API requests")
+REQUEST_COUNT = Counter(
+    "request_count", 
+    "Total API requests"
+    )
 REQUEST_LATENCY = Histogram(
     "request_latency_seconds",
     "Request latency in seconds"
@@ -93,7 +99,10 @@ def create_item(item: Item):
 def update_item(item_id: int, item: Item):
     logging.info(f"Updating item {item_id} -> {item.name}")
     if item_id < 0:
-        raise HTTPException(status_code=400, detail="Invalid item ID")
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid item ID"
+            )
     total_price = calculate_price_with_tax(item.price, item.tax)
     return {
         "item_id": item_id,
@@ -106,7 +115,10 @@ def update_item(item_id: int, item: Item):
 def delete_item(item_id: int):
     logging.warning(f"Deleting item: {item_id}")
     if item_id < 0:
-        raise HTTPException(status_code=400, detail="Invalid item ID")
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid item ID"
+            )
     return {"status": "deleted", "item_id": item_id}
 
 
@@ -150,4 +162,5 @@ async def add_metrics(request: Request, call_next):
     REQUEST_COUNT.inc()
     REQUEST_LATENCY.observe(duration)
     return response
+
 
