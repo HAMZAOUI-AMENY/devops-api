@@ -61,7 +61,9 @@ def read_item(item_id: int):
     logging.info(f"Item requested: {item_id}")
     if item_id < 0:
         logging.error(f"Invalid item_id: {item_id}")
-        raise HTTPException(status_code=400, detail="Invalid item ID")
+        raise HTTPException(
+            status_code=400, detail="Invalid item ID"
+        )
     return {
         "item_id": item_id,
         "name": f"Item {item_id}",
@@ -72,7 +74,9 @@ def read_item(item_id: int):
 @app.post("/items/")
 def create_item(item: Item):
     total_price = calculate_price_with_tax(item.price, item.tax)
-    logging.info(f"Item created: {item.name} with total_price={total_price}")
+    logging.info(
+        f"Item created: {item.name} with total_price={total_price}"
+    )
     return {"name": item.name, "total_price": total_price}
 
 
@@ -82,7 +86,11 @@ def update_item(item_id: int, item: Item):
     if item_id < 0:
         raise HTTPException(status_code=400, detail="Invalid item ID")
     total_price = calculate_price_with_tax(item.price, item.tax)
-    return {"item_id": item_id, "name": item.name, "total_price": total_price}
+    return {
+        "item_id": item_id,
+        "name": item.name,
+        "total_price": total_price
+    }
 
 
 @app.delete("/items/{item_id}")
