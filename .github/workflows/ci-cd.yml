@@ -55,7 +55,7 @@ jobs:
       - name: Push Docker image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/devops-api:latest
 
-  # 3️⃣ Kubernetes Manifest Validation
+  # 3️⃣ Kubernetes Manifest Validation (No Deployment)
   validate-k8s:
     runs-on: ubuntu-latest
     needs: docker
@@ -132,3 +132,9 @@ jobs:
                           name = doc.get('metadata', {}).get('name', 'unnamed')
                           print(f'  • {kind}: {name}')
           "
+          
+          echo ""
+          echo "ℹ️  Manifests validated successfully!"
+          echo "ℹ️  Deploy manually to your Minikube cluster using:"
+          echo "    kubectl apply -f k8s/deployment.yaml"
+          echo "    kubectl apply -f k8s/service.yaml"
