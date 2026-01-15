@@ -34,7 +34,7 @@ jobs:
       - name: Lint code
         run: flake8 app/
 
-  # 2️⃣ Docker Build (optional push to Docker Hub)
+  # 2️⃣ Docker Build and Push
   docker:
     runs-on: ubuntu-latest
     needs: build-and-test
@@ -55,8 +55,8 @@ jobs:
       - name: Push Docker image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/devops-api:latest
 
-  # 3️⃣ Kubernetes Deployment (dry-run safe)
-  deploy-k8s:
+  # 3️⃣ Kubernetes Manifest Validation
+  validate-k8s:
     runs-on: ubuntu-latest
     needs: docker
     if: github.ref == 'refs/heads/main'
@@ -65,7 +65,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
+
       - name: Validate Kubernetes manifests
         run: |
-          echo "Validating Kubernetes manifests (dry-run)"
-          kubectl apply --dry-run=client --validate=false -f k8s/
+          echo "✅ Validating Kubernetes manifests..."
+          kubectl apply --dry-run=client -f k8s/deployment.yaml
+          kubectl apply --dry-run=client -f k8s/service.yaml
+          echo "✅ All Kubernetes manifests are valid!"
+
+      - name: Check manifest structure
+        run: |
+          echo "📋 Kubernetes manifests overview:"
+          echo "==================================="
+          for file in k8s/*.yaml; do
+            echo "File: $file"
+            kubectl get -f $file --dry-run=client -o name
+          done
