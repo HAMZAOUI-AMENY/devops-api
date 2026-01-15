@@ -65,25 +65,70 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-          kubectl version --client
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
 
-      - name: Validate Kubernetes manifests
+      - name: Install PyYAML for validation
+        run: pip install pyyaml
+
+      - name: Validate YAML syntax
         run: |
           echo "✅ Validating Kubernetes manifests..."
-          kubectl apply --dry-run=client -f k8s/deployment.yaml
-          kubectl apply --dry-run=client -f k8s/service.yaml
-          echo "✅ All Kubernetes manifests are valid!"
+          python -c "
+          import yaml
+          import sys
+          
+          files = ['k8s/deployment.yaml', 'k8s/service.yaml']
+          
+          for file in files:
+              print(f'Validating {file}...')
+              try:
+                  with open(file, 'r') as f:
+                      docs = list(yaml.safe_load_all(f))
+                      for doc in docs:
+                          if doc:
+                              # Check required fields
+                              assert 'apiVersion' in doc, f'{file}: Missing apiVersion'
+                              assert 'kind' in doc, f'{file}: Missing kind'
+                              assert 'metadata' in doc, f'{file}: Missing metadata'
+                              print(f'  ✓ {doc[\"kind\"]}: {doc[\"metadata\"].get(\"name\", \"unnamed\")}')
+              except Exception as e:
+                  print(f'❌ Error in {file}: {e}')
+                  sys.exit(1)
+          
+          print('✅ All Kubernetes manifests are valid!')
+          "
 
-      - name: Check manifest structure
+      - name: Install kubeval for K8s validation
         run: |
-          echo "📋 Kubernetes manifests overview:"
-          echo "==================================="
-          for file in k8s/*.yaml; do
-            echo "File: $file"
-            kubectl get -f $file --dry-run=client -o name
-          done
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin
+
+      - name: Validate with kubeval
+        run: |
+          echo "🔍 Validating Kubernetes manifests with kubeval..."
+          kubeval --strict k8s/deployment.yaml
+          kubeval --strict k8s/service.yaml
+          echo "✅ kubeval validation passed!"
+
+      - name: Display manifest summary
+        run: |
+          echo "📋 Kubernetes Resources Summary:"
+          echo "================================="
+          python -c "
+          import yaml
+          
+          files = ['k8s/deployment.yaml', 'k8s/service.yaml']
+          
+          for file in files:
+              with open(file, 'r') as f:
+                  docs = list(yaml.safe_load_all(f))
+                  for doc in docs:
+                      if doc:
+                          kind = doc.get('kind', 'Unknown')
+                          name = doc.get('metadata', {}).get('name', 'unnamed')
+                          print(f'  • {kind}: {name}')
+          "
