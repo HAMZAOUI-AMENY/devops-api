@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Secure CI/CD Pipeline
 
 on:
   push:
@@ -7,139 +7,121 @@ on:
     branches: [ main ]
 
 jobs:
-  # 1️⃣ Build and Test
   build-and-test:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4
+        
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
-
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
           pip install pytest flake8
-
+          
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: pytest tests/
-
+        
       - name: Lint code
         run: flake8 app/
 
-  # 2️⃣ Docker Build and Push
-  docker:
+  security-sast:
     runs-on: ubuntu-latest
-    needs: build-and-test
-
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        
+      - name: Install Bandit
+        run: pip install bandit
+        
+      - name: Run Bandit SAST
+        run: |
+          bandit -r app/ -ll -f json -o bandit-report.json || true
+          bandit -r app/ -ll
+          
+      - name: Upload SAST report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-sast-report
+          path: bandit-report.json
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+  docker-build:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/devops-api:latest
 
-      - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-api:latest .
-
-      - name: Push Docker image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/devops-api:latest
-
-  # 3️⃣ Kubernetes Manifest Validation (No Deployment)
-  validate-k8s:
+  dast-scan:
+    needs: docker-build
     runs-on: ubuntu-latest
-    needs: docker
-    if: github.ref == 'refs/heads/main'
-
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    
+    steps:
+      - name: Run Docker Container
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: |
+          docker run -d -p 8000:8000 --name devops-api $DOCKER_USERNAME/devops-api:latest
+          sleep 10
+          
+      - name: OWASP ZAP Baseline Scan (DAST)
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: 'http://localhost:8000'
+          artifact_name: 'zap-baseline-results'
+          
+      - name: OWASP ZAP Full Scan (DAST)
+        uses: zaproxy/action-full-scan@v0.12.0
+        with:
+          target: 'http://localhost:8000'
+          artifact_name: 'zap-full-scan-results'
+          allow_issue_writing: true
+          
+      - name: Stop Docker Container
+        run: docker stop devops-api
+  
+  deploy:
+    needs: [docker-build, dast-scan]
+    runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-
-      - name: Install validation tools
+        uses: actions/checkout@v4
+        
+      - name: Create KinD Cluster
+        uses: helm/kind-action@v1.10.0
+        
+      - name: Deploy to Kubernetes
         run: |
-          pip install pyyaml
-          
-      - name: Validate YAML syntax
-        run: |
-          echo "✅ Validating Kubernetes manifests..."
-          python3 << 'EOF'
-          import yaml
-          import sys
-          
-          files = ['k8s/deployment.yaml', 'k8s/service.yaml']
-          
-          for file in files:
-              print(f'Validating {file}...')
-              try:
-                  with open(file, 'r') as f:
-                      docs = list(yaml.safe_load_all(f))
-                      for doc in docs:
-                          if doc:
-                              # Check required fields
-                              assert 'apiVersion' in doc, f'{file}: Missing apiVersion'
-                              assert 'kind' in doc, f'{file}: Missing kind'
-                              assert 'metadata' in doc, f'{file}: Missing metadata'
-                              assert 'name' in doc.get('metadata', {}), f'{file}: Missing metadata.name'
-                              print(f'  ✓ {doc["kind"]}: {doc["metadata"]["name"]}')
-              except Exception as e:
-                  print(f'❌ Error in {file}: {e}')
-                  sys.exit(1)
-          
-          print('\n✅ All Kubernetes manifests are valid!')
-          EOF
-
-      - name: Validate with kubeconform
-        run: |
-          echo "🔍 Installing kubeconform..."
-          curl -L https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
-          chmod +x kubeconform
-          
-          echo "🔍 Validating Kubernetes manifests..."
-          ./kubeconform -strict -summary k8s/deployment.yaml k8s/service.yaml
-          
-          echo "✅ Kubeconform validation passed!"
-
-      - name: Display manifest summary
-        run: |
-          echo ""
-          echo "📋 Kubernetes Resources Summary:"
-          echo "================================="
-          python3 << 'EOF'
-          import yaml
-          
-          files = ['k8s/deployment.yaml', 'k8s/service.yaml']
-          
-          for file in files:
-              with open(file, 'r') as f:
-                  docs = list(yaml.safe_load_all(f))
-                  for doc in docs:
-                      if doc:
-                          kind = doc.get('kind', 'Unknown')
-                          name = doc.get('metadata', {}).get('name', 'unnamed')
-                          print(f'  • {kind}: {name}')
-          EOF
-          
-          echo ""
-          echo "ℹ️  Manifests validated successfully!"
-          echo "ℹ️  Deploy manually to your Minikube cluster using:"
-          echo "    kubectl apply -f k8s/"
-          echo ""
-          echo "📝 Quick deployment:"
-          echo "    make deploy"
-          echo "    OR"
-          echo "    deploy.bat (Windows)"
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl wait --for=condition=available --timeout=120s deployment/devops-api
+          kubectl get pods
+          kubectl get services
