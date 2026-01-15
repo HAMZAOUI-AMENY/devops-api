@@ -65,6 +65,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
       - name: Install PyYAML for validation
         run: pip install pyyaml
 
@@ -95,6 +100,19 @@ jobs:
           
           print('✅ All Kubernetes manifests are valid!')
           "
+
+      - name: Install kubeval for K8s validation
+        run: |
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin
+
+      - name: Validate with kubeval
+        run: |
+          echo "🔍 Validating Kubernetes manifests with kubeval..."
+          kubeval --strict k8s/deployment.yaml
+          kubeval --strict k8s/service.yaml
+          echo "✅ kubeval validation passed!"
 
       - name: Display manifest summary
         run: |
