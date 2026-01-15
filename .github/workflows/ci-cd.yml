@@ -70,13 +70,14 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install PyYAML for validation
-        run: pip install pyyaml
-
+      - name: Install validation tools
+        run: |
+          pip install pyyaml
+          
       - name: Validate YAML syntax
         run: |
           echo "✅ Validating Kubernetes manifests..."
-          python -c "
+          python3 << 'EOF'
           import yaml
           import sys
           
@@ -93,32 +94,32 @@ jobs:
                               assert 'apiVersion' in doc, f'{file}: Missing apiVersion'
                               assert 'kind' in doc, f'{file}: Missing kind'
                               assert 'metadata' in doc, f'{file}: Missing metadata'
-                              print(f'  ✓ {doc[\"kind\"]}: {doc[\"metadata\"].get(\"name\", \"unnamed\")}')
+                              assert 'name' in doc.get('metadata', {}), f'{file}: Missing metadata.name'
+                              print(f'  ✓ {doc["kind"]}: {doc["metadata"]["name"]}')
               except Exception as e:
                   print(f'❌ Error in {file}: {e}')
                   sys.exit(1)
           
-          print('✅ All Kubernetes manifests are valid!')
-          "
+          print('\n✅ All Kubernetes manifests are valid!')
+          EOF
 
-      - name: Install kubeval for K8s validation
+      - name: Validate with kubeconform
         run: |
-          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
-          tar xf kubeval-linux-amd64.tar.gz
-          sudo mv kubeval /usr/local/bin
-
-      - name: Validate with kubeval
-        run: |
-          echo "🔍 Validating Kubernetes manifests with kubeval..."
-          kubeval --strict k8s/deployment.yaml
-          kubeval --strict k8s/service.yaml
-          echo "✅ kubeval validation passed!"
+          echo "🔍 Installing kubeconform..."
+          curl -L https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          chmod +x kubeconform
+          
+          echo "🔍 Validating Kubernetes manifests..."
+          ./kubeconform -strict -summary k8s/deployment.yaml k8s/service.yaml
+          
+          echo "✅ Kubeconform validation passed!"
 
       - name: Display manifest summary
         run: |
+          echo ""
           echo "📋 Kubernetes Resources Summary:"
           echo "================================="
-          python -c "
+          python3 << 'EOF'
           import yaml
           
           files = ['k8s/deployment.yaml', 'k8s/service.yaml']
@@ -131,10 +132,14 @@ jobs:
                           kind = doc.get('kind', 'Unknown')
                           name = doc.get('metadata', {}).get('name', 'unnamed')
                           print(f'  • {kind}: {name}')
-          "
+          EOF
           
           echo ""
           echo "ℹ️  Manifests validated successfully!"
           echo "ℹ️  Deploy manually to your Minikube cluster using:"
-          echo "    kubectl apply -f k8s/deployment.yaml"
-          echo "    kubectl apply -f k8s/service.yaml"
+          echo "    kubectl apply -f k8s/"
+          echo ""
+          echo "📝 Quick deployment:"
+          echo "    make deploy"
+          echo "    OR"
+          echo "    deploy.bat (Windows)"
